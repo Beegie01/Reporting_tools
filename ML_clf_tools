@@ -1,0 +1,82 @@
+def gen_word_freq_from_docs(filenames: 'str_or_array', add_bias: int=0, report_as_dataframe: bool=False):
+    """Generate word frequency count for one or more text file(s)"""
+    
+    def read_one(filenames: str):
+        result = dict()
+        try:
+            with open(filenames, mode='r', encoding='utf8') as f:
+                result = [w.strip() for w in f.read().lower().split()]
+        except err:
+            print(f"Error has occurred: {err}")
+            
+        return result
+    
+    def read_many(filenames: list):
+        return [read_one(filenames[i]) for i in range(len(filenames))]
+        
+    def create_all_unq_words(files: list):
+        unq_words = dict()
+        final_dict = set()
+        # dictionary for each file
+        for i in range(len(files)):
+            unq_words[i] = set(files[i])
+        # set of unique words from each file
+        for file_ix, unq_word in unq_words.items():
+            final_dict = final_dict.union(unq_word)
+            
+        return sorted( [[w, c] for w, c in zip(tuple(final_dict), tuple([0]*len(final_dict)))] )
+    
+    def value_extractor(word_vector, extract_count=True):
+        if extract_count:
+            return [c for w, c in word_vector]
+        return [w for w, c in word_vector]
+    
+    def each_file_count(files: 'list of words'):
+        """count occurrences"""
+        
+        if not isinstance(files[0], list):
+            files = [files] 
+            
+        result = dict()
+        all_word_count = create_all_unq_words(files)
+    
+        for f_ix, f in enumerate(files):  # for each file
+            this_count = [[w, c+add_bias] for w,c in copy.deepcopy(all_word_count)]
+            
+            for i in range(len(f)):  # for each word index in current file
+                # go thru each word in the general dictionary
+                for n in range(len(all_word_count)):
+                    # if current word is found in general dictionary
+                    if this_count[n][0] == f[i]:
+                        # increment that word's count by 1
+                        this_count[n][1] += 1
+            # store word count for file in result
+            result[f"doc_{f_ix}"] = this_count
+
+        return value_extractor(all_word_count, False), result
+    
+    def report_as_df(dict_output):
+        """convert the final output from dict format to a pandas dataframe"""
+        
+        data_header = dict_output['words_column']
+        data_vals = [val for label, val in dict_output.items() if 'doc' in label]
+        data_ind = [label for label, val in dict_output.items() if 'doc' in label]
+        
+        return pd.DataFrame(data=data_vals, index=data_ind, columns=data_header)
+    
+    # read file content
+    if isinstance(filenames, str):
+        file_out = read_one(filenames)
+    elif isinstance(filenames, (list, tuple)):
+        file_out = read_many(filenames)
+    
+    all_words, result = each_file_count(file_out)
+    final_output = {'words_column': all_words}
+    
+    for fname, count in result.items():
+        final_output[fname] = value_extractor(count, True)
+    
+    if report_as_dataframe:
+        return report_as_df(final_output)
+    
+    return final_output
