@@ -1,0 +1,12 @@
+def visualize_binaryclf_report(trained_model, test_input, test_label, is_ANN=False, nn_cutoff=0.5):
+    """performance report for trained model"""
+    
+    test_pred = trained_model.predict(test_input)
+    if is_ANN:
+        test_pred = (test_pred >= nn_cutoff).astype(int)
+    
+    print(mtr.classification_report(test_label, test_pred))
+    
+    sns.set_style('white')
+    plt.figure(figsize=(6, 5), dpi=200)
+    mtr.ConfusionMatrixDisplay.from_predictions(test_label, test_pred)
